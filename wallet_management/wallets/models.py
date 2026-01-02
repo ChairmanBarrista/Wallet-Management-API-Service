@@ -1,31 +1,26 @@
 from django.db import models
 from django.contrib.auth.models import User
 
-class Wallet(models.Model):
-    WALLET_TYPES = (
-        ('momo', 'Mobile Money'),
-        ('card', 'Card'),
-    )
+class UserProfile(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE)
+    phone_number = models.CharField(max_length=15)
 
-    SCHEMES = (
+class Wallet(models.Model):
+    TYPE_CHOICES = [
+        ('momo', 'Momo'),
+        ('card', 'Card'),
+    ]
+    SCHEME_CHOICES = [
         ('visa', 'Visa'),
         ('mastercard', 'Mastercard'),
         ('mtn', 'MTN'),
         ('vodafone', 'Vodafone'),
-        ('at', 'AT'),
-    )
-
+        ('airteltigo', 'AirtelTigo'),
+    ]
     id = models.AutoField(primary_key=True)
     name = models.CharField(max_length=100)
-    type = models.CharField(max_length=10, choices=WALLET_TYPES)
-    account_number = models.CharField(max_length=6)  # first 6 digits only
-    account_scheme = models.CharField(max_length=20, choices=SCHEMES)
-    owner = models.CharField(max_length=20)  # phone number
+    type = models.CharField(max_length=10, choices=TYPE_CHOICES)
+    account_number = models.CharField(max_length=20)
+    account_scheme = models.CharField(max_length=20, choices=SCHEME_CHOICES)
     created_at = models.DateTimeField(auto_now_add=True)
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='wallets')
-
-    class Meta:
-        unique_together = ('user', 'account_number', 'account_scheme')
-
-    def __str__(self):
-        return f"{self.name} - {self.user.username}"
+    owner = models.ForeignKey(User, on_delete=models.CASCADE)
