@@ -1,5 +1,5 @@
 """
-URL configuration for wallet_management project.
+URL configuration for wallet_project project.
 
 The `urlpatterns` list routes URLs to views. For more information please see:
     https://docs.djangoproject.com/en/5.2/topics/http/urls/
@@ -14,10 +14,14 @@ Including another URLconf
     1. Import the include() function: from django.urls import include, path
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
+# wallet_project/urls.py
 
-from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
+from django.contrib import admin
+from django.urls import path, include
+from rest_framework.authtoken.views import obtain_auth_token
 
 urlpatterns = [
-    path('api/token/', TokenObtainPairView.as_view()),
-    path('api/token/refresh/', TokenRefreshView.as_view()),
+    path('admin/', admin.site.urls),
+    path('api/', include('wallets.urls')),
+    path('api/auth/login/', obtain_auth_token, name='api_token_auth'),
 ]
