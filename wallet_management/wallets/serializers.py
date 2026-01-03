@@ -2,31 +2,54 @@ from rest_framework import serializers
 from .models import Wallet
 
 class WalletSerializer(serializers.ModelSerializer):
-
+    """Serializers for listing and retrieving wallets"""
+    
     class Meta:
         model = Wallet
-        fields = '__all__'
-        read_only_fields = ('id', 'created_at', 'user')
+        fields = ['id', 'name', 'type', 'account_number', 'account_scheme', 'created_at', 'owner']
+        read_only_fields = ['id', 'created_at', 'owner']
 
+
+class WalletCreateSerializer(serializers.ModelSerializer):
+    """Serializer for creating wallets with validation"""
+    
+    class Meta:
+        model = Wallet
+        fields = ['name', 'type', 'account_number', 'account_scheme']
+    
     def validate(self, data):
-        user = self.context['request'].user
-
-        # 1. Max 5 wallets per user
-        if Wallet.objects.filter(user=user).count() >= 5:
-            raise serializers.ValidationError("A user cannot have more than 5 wallets.")
-
-        # 2. Prevent duplicate wallets
-        if Wallet.objects.filter(
-            user=user,
-            account_number=data['account_number'][:6],
-            account_scheme=data['account_scheme']
-        ).exists():
-            raise serializers.ValidationError("Duplicate wallet detected.")
-
+        """Custom validation for wallet creation"""
+        request = self.context.get('request')
+        owner = request.user.username  # Assuming username is phone number
+        
+        # Validate type and scheme match
+        if data['type'] == 'momo' and data['account_scheme'] not in Wallet.MOMO_SCHEMES:
+            raise serializers.ValidationError({
+                'account_scheme': f"For mobile money, scheme must be one of: {', '.join(Wallet.MOMO_SCHEMES)}"
+            })
+        
+        if data['type'] == 'card' and data['account_scheme'] not in Wallet.CARD_SCHEMES:
+            raise serializers.ValidationError({
+                'account_scheme': f"For card, scheme must be one of: {', '.join(Wallet.CARD_SCHEMES)}"
+            })
+        
+        # Check for duplicate wallet (same account_number + owner)
+        if Wallet.objects.filter(account_number=data['account_number'], owner=owner).exists():
+            raise serializers.ValidationError({
+                'account_number': 'You already have a wallet with this account number.'
+            })
+        
+        # Check 5-wallet limit
+        wallet_count = Wallet.objects.filter(owner=owner).count()
+        if wallet_count >= 5:
+            raise serializers.ValidationError(
+                'You cannot have more than 5 wallets. Please delete an existing wallet first.'
+            )
+        
         return data
-
+   
     def create(self, validated_data):
-        # Store only first 6 digits
-        validated_data['account_number'] = validated_data['account_number'][:6]
-        validated_data['user'] = self.context['request'].user
+        """Create wallet with owner from authenticated user"""
+        request = self.context.get('request')
+        validated_data['owner'] = request.user.username  # Set owner from authenticated user
         return super().create(validated_data)
